@@ -12,7 +12,8 @@ const {
 
 const router = express.Router();
 
-router.use(verifyAuth); // sob vault route protected
+
+router.use(verifyAuth); 
 
 router.get('/vault', getVaultEntries);
 router.post('/vault', strictLimiter, validateVaultEntry, addVaultEntry);
