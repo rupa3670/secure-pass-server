@@ -1,3 +1,6 @@
+const { ObjectId } = require('mongodb');
+const crypto = require('crypto');
+
 // GET /api/dashboard -> data for the logged-in user only
 const getDashboard = async (req, res) => {
   const db = req.app.locals.db;
@@ -54,10 +57,8 @@ const updateMyProfile = async (req, res) => {
 };
 
 // GET /api/users/:id -> only reachable if :id belongs to the requester
-// (verifyOwnership + validateMongoIdParam already run before this in the route)
 const getUserById = async (req, res) => {
   const db = req.app.locals.db;
-  const { ObjectId } = require('mongodb');
 
   const user = await db.collection("user").findOne({ _id: new ObjectId(req.params.id) });
 
@@ -68,4 +69,26 @@ const getUserById = async (req, res) => {
   res.json({ user });
 };
 
-module.exports = { getDashboard, getMyProfile, updateMyProfile, getUserById };
+// GET /api/user/vault-salt -> get or create this user's vault encryption salt
+const getVaultSalt = async (req, res) => {
+  const db = req.app.locals.db;
+  const user = await db.collection("user").findOne({ email: req.user.email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  let vaultSalt = user.vaultSalt;
+
+  if (!vaultSalt) {
+    vaultSalt = crypto.randomBytes(16).toString("hex");
+    await db.collection("user").updateOne(
+      { email: req.user.email },
+      { $set: { vaultSalt } }
+    );
+  }
+
+  res.json({ vaultSalt });
+};
+
+module.exports = { getDashboard, getMyProfile, updateMyProfile, getUserById, getVaultSalt };
